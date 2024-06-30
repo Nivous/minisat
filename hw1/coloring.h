@@ -1,6 +1,7 @@
 #ifndef COLORING_H_
 #define COLORING_H_
 
+#include <minisat/core/SolverTypes.h>
 #include <vector>
 #include "minisat/core/Solver.h"
 
@@ -68,7 +69,7 @@ public:
         {
             for (int n = 0; n < nodes; n++)
             {
-                m_solver.newVar();
+                m_solver.newVar(); // Var c * nodes + n = node number n is colored in color c
             }
         }
     }
@@ -76,7 +77,17 @@ public:
     void addOneColorConstraints(int node) {
         assert (node < m_graph.getNumberOfNodes());
 
-        // Add your code here
+        int n_nodes = m_graph.getNumberOfNodes();
+        Minisat::vec<Minisat::Lit> more_than_one_color;
+
+        for (int c = 0; c < m_nNumberOfColors; c++) 
+            more_than_one_color.push(Minisat::mkLit(getNodeHasColorVar(node, c), false));
+
+        m_solver.addClause(more_than_one_color);
+
+        for (int c1 = 0; c1 < m_nNumberOfColors; c1++)
+            for (int c2 = c1 + 1; c2 < m_nNumberOfColors; c2++)
+                m_solver.addClause(Minisat::mkLit(getNodeHasColorVar(node, c1), true), Minisat::mkLit(getNodeHasColorVar(node, c2), true));
     }
 
     void addEdgeColoringConstraints(int n1, int n2) {
@@ -84,7 +95,10 @@ public:
                 n2 < m_graph.getNumberOfNodes());
         assert (n1 <= n2);
 
-        // Add your code here
+        int n_nodes = m_graph.getNumberOfNodes();
+
+        for (int c = 0; c < m_nNumberOfColors; c++)
+            m_solver.addClause(Minisat::mkLit(getNodeHasColorVar(n1, c), true), Minisat::mkLit(getNodeHasColorVar(n2, c), true));
 
     }
 
@@ -113,8 +127,10 @@ public:
     // all k-coloring in this vector. Note that the inner vector
     // represents one assignment
     void givemeAllColoring(vector<vector<Minisat::lbool> >& allColoring) {
+        int n_nodes = m_graph.getNumberOfNodes();
+
         // Go over all nodes
-        for (int n = 0; n < m_graph.getNumberOfNodes(); n++)
+        for (int n = 0; n < n_nodes; n++)
         {
             // Add the constraints for the node
             addOneColorConstraints(n);
@@ -127,7 +143,20 @@ public:
             }
         }
 
-        // Add your code here
+        while (m_solver.solve()) {
+            vector<Minisat::lbool> model;
+            Minisat::vec<Minisat::Lit> clause;
+            for (int n = 0; n < n_nodes; n++) {
+                for (int c = 0; c < m_nNumberOfColors; c++) {
+                    Minisat::Var var = getNodeHasColorVar(n, c);
+                    Minisat::lbool value = m_solver.modelValue(var);
+                    model.push_back(value);
+                    clause.push(Minisat::mkLit(var, value == Minisat::l_True));
+                }
+            }
+            allColoring.push_back(model);
+            m_solver.addClause(clause);
+        }
     }
 
 private:
