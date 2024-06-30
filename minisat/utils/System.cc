@@ -70,6 +70,7 @@ double Minisat::memUsed() { return (double)memReadStat(0) * (double)getpagesize(
 double Minisat::memUsedPeak(bool strictlyPeak) { 
     double peak = memReadPeak() / (double)1024;
     return peak == 0 && !strictlyPeak ? memUsed() : peak; }
+double Minisat::memUsedPeak() { return memUsedPeak(false); }
 
 #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__gnu_hurd__)
 
